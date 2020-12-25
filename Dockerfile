@@ -4,6 +4,7 @@ FROM python:3.9-slim
 
 #  Allow statements and log messages to immediately appear in the Knative logs
 ENV PYTHONUNBUFFERED True
+# Get debug information from Flask
 ENV FLASK_ENV development
 
 # Copy local code to the container image.
@@ -43,6 +44,7 @@ RUN pip install requests-html
 RUN pip install asyncio
 RUN pip install beautifulsoup4
 RUN pip install regex
+RUN pip install google-cloud-storage
 
 # Run everything after as non-privileged user.
 USER pptruser

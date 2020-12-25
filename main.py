@@ -11,7 +11,14 @@ import asyncio
 import pyppeteer
 import re
 
+# Imports for Google Cloud Storage
+from google.cloud import storage
+import datetime
+
 app = Flask(__name__)
+
+# Configure this environment variable via app.yaml
+CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 
 async def get_page(url):
     new_loop=asyncio.new_event_loop()
@@ -159,6 +166,37 @@ def parse_page_to_json(soup):
     match = parse_keepers(soup, match)
     return match
 
+def get_match_filename(date, hometeam, awayteam):
+    match_date = datetime.datetime.strptime(date, '%A %B %d, %Y').strftime('%d%b%Y')
+    home_name = hometeam.replace(' ', '_')
+    away_name = awayteam.replace(' ', '_')
+    return match_date + '_' + home_name + '_vs_' + away_name + '.json'
+
+def store_match_json(match_json):
+    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
+    file_name = get_match_filename(match_json['Date'], match_json['HomeStats']['Team'], match_json['AwayStats']['Team'])
+
+    storage_client = storage.Client()
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+    except exceptions.NotFound:
+        raise NameError("Bucket does not exist")
+    
+    try:
+        if storage.Blob(bucket=bucket, name=file_name).exists(storage_client):
+            raise NameError("File for match already exists")
+    except:
+        raise NameError("Error checking if file exists")
+
+    try:
+        blob = bucket.blob(file_name)
+        blob.upload_from_string(
+            data=json.dumps(match_json),
+            content_type='application/json'
+        )
+    except:
+        raise ValueError("Error writing JSON file to bucket")
+
 @app.route("/")
 def hello_world():
     return render_template('index.html')
@@ -192,7 +230,26 @@ def collect_match(url):
     soup = BeautifulSoup(page_content, 'html.parser')
     match_json = parse_page_to_json(soup)
 
+    # Then store the file on Google Cloud Storage
+    try:
+        store_match_json(match_json)
+    except:
+        return "Error storing the json file"
+
     return jsonify(match_json)
+
+@app.route("/storage", defaults={'filename': 'file1.json'})
+@app.route("/storage/<string:filename>")
+def see_storage(filename):
+    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
+    storage_client = storage.Client()
+    blobs = storage_client.list_blobs(bucket_name)
+
+    bucket_blobs = []
+    for blob in blobs:
+        bucket_blobs.append(blob)
+
+    return render_template('storage.html', bucket_blobs=bucket_blobs)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
