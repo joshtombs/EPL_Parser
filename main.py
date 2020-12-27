@@ -64,14 +64,27 @@ def build_empty_json_obj():
 
 def parse_header(soup, match):
     sbm = soup.find('div', {'class': 'scorebox_meta'})
-    match['Date'] = sbm.find('strong').text
-    
+    if sbm is None:
+        raise ValueError('Error parsing page')
+
+    date_el = sbm.find('strong')
+    if date_el is None:
+        raise ValueError('Error parsing page')
+    match['Date'] = date_el.text
+
     sb = soup.find('div', {'class': 'scorebox'})
+    if sb is None:
+        raise ValueError('Error parsing page')
+
     team_names = sb.findAll('a', {'itemprop': 'name'})
+    if len(team_names) < 2:
+        raise ValueError('Error parsing page')
     match['HomeStats']['Team'] = team_names[0].text
     match['AwayStats']['Team'] = team_names[1].text
 
     scores_el = sb.find_all('div', {'class':'score'})
+    if len(scores_el) < 2:
+        raise ValueError('Error parsing page')
     match['HomeStats']['Goals'] = int(scores_el[0].text)
     match['AwayStats']['Goals'] = int(scores_el[1].text)
 
@@ -83,18 +96,27 @@ def parse_header(soup, match):
         match['Result'] = 'Away'
 
     scores_divs = sb.findAll('div', {'class': 'scores'})
-    match['HomeStats']['Record'] = scores_divs[0].nextSibling.text
-    match['AwayStats']['Record'] = scores_divs[1].nextSibling.text
+    if len(scores_divs) >= 2:
+        match['HomeStats']['Record'] = scores_divs[0].nextSibling.text
+        match['AwayStats']['Record'] = scores_divs[1].nextSibling.text
 
     lineup_el = soup.find_all('div', {'class': 'lineup'})
-    match['HomeStats']['Formation'] = re.findall(r'\(.*?\)', lineup_el[0].find('th').text)[0]
-    match['AwayStats']['Formation'] = re.findall(r'\(.*?\)', lineup_el[1].find('th').text)[0]
+    if len(lineup_el) >= 2:
+        home_formation_el = lineup_el[0].find('th')
+        if home_formation_el is not None:
+            match['HomeStats']['Formation'] = re.findall(r'\(.*?\)', home_formation_el.text)[0]
+        away_formation_el = lineup_el[1].find('th')
+        if away_formation_el is not None:
+            match['AwayStats']['Formation'] = re.findall(r'\(.*?\)', away_formation_el.text)[0]
 
     possession_text = soup.find(text="Possession")
-    possession_tr = possession_text.parent
-    strong_el = possession_tr.findNext('tr').find('strong')
-    match['HomeStats']['Possession'] = strong_el.text
-    match['AwayStats']['Possession'] = strong_el.findNext('strong').text
+    if possession_text is not None:
+        possession_tr = possession_text.parent
+        if possession_tr is not None:
+            # TODO: refactor for error checking
+            strong_el = possession_tr.findNext('tr').find('strong')
+            match['HomeStats']['Possession'] = strong_el.text
+            match['AwayStats']['Possession'] = strong_el.findNext('strong').text
 
     return match
 
@@ -108,30 +130,104 @@ def parse_players(soup, match):
         pass_rows = pass_table.find('tbody').findAll('tr')
         for (summary_row, misc_row, pass_row) in zip(summary_rows, misc_rows, pass_rows):
             player = {}
-            player['Name'] = summary_row.find('th').text.strip()
-            player['Pos'] = summary_row.find('td', {'data-stat': 'position'}).text.strip()
-            player['Min'] = int(summary_row.find('td', {'data-stat': 'minutes'}).text.strip())
-            player['Gls'] = int(summary_row.find('td', {'data-stat': 'goals'}).text.strip())
-            player['Asts'] = int(summary_row.find('td', {'data-stat': 'assists'}).text.strip())
-            player['PK'] = int(summary_row.find('td', {'data-stat': 'pens_made'}).text.strip())
-            player['PKatt'] = int(summary_row.find('td', {'data-stat': 'pens_att'}).text.strip())
-            player['Sh'] = int(summary_row.find('td', {'data-stat': 'shots_total'}).text.strip())
-            player['SoT'] = int(summary_row.find('td', {'data-stat': 'shots_on_target'}).text.strip())
-            player['CrdY'] = int(summary_row.find('td', {'data-stat': 'cards_yellow'}).text.strip())
-            player['CrdR'] = int(summary_row.find('td', {'data-stat': 'cards_red'}).text.strip())
-            player['2CrdY'] = int(misc_row.find('td', {'data-stat': 'cards_yellow_red'}).text.strip())
-            player['Touches'] = int(summary_row.find('td', {'data-stat': 'touches'}).text.strip())
-            player['Int'] = int(summary_row.find('td', {'data-stat': 'interceptions'}).text.strip())
-            player['Blk'] = int(summary_row.find('td', {'data-stat': 'blocks'}).text.strip())
-            player['pComp'] = int(summary_row.find('td', {'data-stat': 'passes_completed'}).text.strip())
-            player['pAtt'] = int(summary_row.find('td', {'data-stat': 'passes'}).text.strip())
-            player['xA'] = float(summary_row.find('td', {'data-stat': 'xa'}).text.strip())
-            player['xG'] = float(summary_row.find('td', {'data-stat': 'xg'}).text.strip())
-            player['Crs'] = int(misc_row.find('td', {'data-stat': 'crosses'}).text.strip())
-            player['TklW'] = int(misc_row.find('td', {'data-stat': 'tackles_won'}).text.strip())
-            player['Fls'] = int(misc_row.find('td', {'data-stat': 'fouls'}).text.strip())
-            player['Fld'] = int(misc_row.find('td', {'data-stat': 'fouled'}).text.strip())
-            player['AstShots'] = int(pass_row.find('td', {'data-stat': 'assisted_shots'}).text.strip())
+            
+            name_el = summary_row.find('th')
+            if name_el is None:
+                continue
+            player['Name'] = name_el.text.strip()
+
+            pos_el = summary_row.find('td', {'data-stat': 'position'})
+            if pos_el is None:
+                continue
+            player['Pos'] = pos_el.text.strip()
+
+            min_el = summary_row.find('td', {'data-stat': 'minutes'})
+            if min_el is not None:
+                player['Min'] = int(min_el.text.strip())
+
+            gls_el = summary_row.find('td', {'data-stat': 'goals'})
+            if gls_el is not None:
+                player['Gls'] = int(gls_el.text.strip())
+
+            asts_el = summary_row.find('td', {'data-stat': 'assists'})
+            if asts_el is not None:
+                player['Asts'] = int(asts_el.text.strip())
+
+            pk_el = summary_row.find('td', {'data-stat': 'pens_made'})
+            if pk_el is not None:
+                player['PK'] = int(pk_el.text.strip())
+
+            pkatt_el = summary_row.find('td', {'data-stat': 'pens_att'})
+            if pkatt_el is not None:
+                player['PKatt'] = int(pkatt_el.text.strip())
+
+            shots_el = summary_row.find('td', {'data-stat': 'shots_total'})
+            if shots_el is not None:
+                player['Sh'] = int(shots_el.text.strip())
+
+            sot_el = summary_row.find('td', {'data-stat': 'shots_on_target'})
+            if sot_el is not None:
+                player['SoT'] = int(sot_el.text.strip())
+
+            crdY_el = summary_row.find('td', {'data-stat': 'cards_yellow'})
+            if crdY_el is not None:
+                player['CrdY'] = int(crdY_el.text.strip())
+
+            crdR_el = summary_row.find('td', {'data-stat': 'cards_red'})
+            if crdR_el is not None:
+                player['CrdR'] = int(crdR_el.text.strip())
+
+            crdYR_el = misc_row.find('td', {'data-stat': 'cards_yellow_red'})
+            if crdYR_el is not None:
+                player['2CrdY'] = int(crdYR_el.text.strip())
+
+            touches_el = summary_row.find('td', {'data-stat': 'touches'})
+            if touches_el is not None:
+                player['Touches'] = int(touches_el.text.strip())
+
+            int_el = summary_row.find('td', {'data-stat': 'interceptions'})
+            if int_el is not None:
+                player['Int'] = int(int_el.text.strip())
+
+            block_el = summary_row.find('td', {'data-stat': 'blocks'})
+            if block_el is not None:
+                player['Blk'] = int(block_el.text.strip())
+
+            pcomp_el = summary_row.find('td', {'data-stat': 'passes_completed'})
+            if pcomp_el is not None:
+                player['pComp'] = int(pcomp_el.text.strip())
+
+            passatt_el = summary_row.find('td', {'data-stat': 'passes'})
+            if passatt_el is not None:
+                player['pAtt'] = int(passatt_el.text.strip())
+
+            xa_el = summary_row.find('td', {'data-stat': 'xa'})
+            if xa_el is not None:
+                player['xA'] = float(xa_el.text.strip())
+
+            xg_el = summary_row.find('td', {'data-stat': 'xg'})
+            if xg_el is not None:
+                player['xG'] = float(xg_el.text.strip())
+
+            crs_el = misc_row.find('td', {'data-stat': 'crosses'})
+            if crs_el is not None:
+                player['Crs'] = int(crs_el.text.strip())
+
+            tklw_el = misc_row.find('td', {'data-stat': 'tackles_won'})
+            if tklw_el is not None:
+                player['TklW'] = int(tklw_el.text.strip())
+
+            fouls_el = misc_row.find('td', {'data-stat': 'fouls'})
+            if fouls_el is not None:
+                player['Fls'] = int(fouls_el.text.strip())
+
+            fouled_el = misc_row.find('td', {'data-stat': 'fouled'})
+            if fouled_el is not None:
+                player['Fld'] = int(fouled_el.text.strip())
+
+            astshots_el = pass_row.find('td', {'data-stat': 'assisted_shots'})
+            if astshots_el is not None:
+                player['AstShots'] = int(astshots_el.text.strip())
 
             if tbl_num == 1:
                 match['HomePlayers'].append(player)
@@ -146,11 +242,27 @@ def parse_keepers(soup, match):
         rows = keeper_table.find('tbody').findAll('tr')
         for row in rows:
             player = {}
-            player['Name'] = row.find('th').text.strip()
-            player['Min'] = int(row.find('td', {'data-stat': 'minutes'}).text.strip())
-            player['SoTA'] = int(row.find('td', {'data-stat': 'shots_on_target_against'}).text.strip())
-            player['GA'] = int(row.find('td', {'data-stat': 'goals_against_gk'}).text.strip())
-            player['PSxG'] = float(row.find('td', {'data-stat': 'psxg_gk'}).text.strip())
+            
+            name_el = row.find('th')
+            if name_el is None:
+                continue
+            player['Name'] = name_el.text.strip()
+
+            minutes_el = row.find('td', {'data-stat': 'minutes'})
+            if minutes_el is not None:
+                player['Min'] = int(minutes_el.text.strip())
+
+            sota_el = row.find('td', {'data-stat': 'shots_on_target_against'})
+            if sota_el is not None:
+                player['SoTA'] = int(sota_el.text.strip())
+            
+            ga_el = row.find('td', {'data-stat': 'goals_against_gk'})
+            if ga_el is not None:
+                player['GA'] = int(ga_el.text.strip())
+            
+            psxg_el = row.find('td', {'data-stat': 'psxg_gk'})
+            if psxg_el is not None:
+                player['PSxG'] = float(psxg_el.text.strip())
 
             if tbl_num == 1:
                 match['HomeKeepers'].append(player)
