@@ -1,3 +1,6 @@
+# Command to run locally:
+# docker run --rm --security-opt seccomp=chrome.json -p 9080:8080 -e PORT=8080 epl-app
+
 # Use the official lightweight Python image.
 # https://hub.docker.com/_/python
 FROM python:3.9-slim
