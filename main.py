@@ -285,7 +285,25 @@ def get_match_filename(date, hometeam, awayteam):
     away_name = awayteam.replace(' ', '_')
     return match_date + '_' + home_name + '_vs_' + away_name + '.json'
 
+def match_is_valid(match_json):
+    if len(match_json['HomePlayers']) < 11:
+        return False
+    if len(match_json['AwayPlayers']) < 11:
+        return False
+    if len(match_json['HomeKeepers']) < 1:
+        return False
+    if len(match_json['AwayKeepers']) < 1:
+        return False
+
+    # TODO: Validate header info
+
+    return True
+
 def store_match_json(match_json):
+    if not match_is_valid(match_json):
+        print('Skipped storing json file because match is not valid')
+        return
+
     bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     file_name = get_match_filename(match_json['Date'], match_json['HomeStats']['Team'], match_json['AwayStats']['Team'])
 
@@ -323,18 +341,18 @@ def print_run_statistics(run_stats):
 def hello_world():
     return render_template('index.html')
 
-@app.route("/test/<path:url>")
-def test_pyppeteer(url):
-    print("Got request to collect", url)
-    # First collect the site from the url
-    try:
-        page_content = asyncio.run(get_page(url))
-    except:
-        return "Error retrieving match content from URL"
-    soup = BeautifulSoup(page_content, 'html.parser')
-    return "Success."
+# @app.route("/test/<path:url>")
+# def test_pyppeteer(url):
+#     print("Got request to collect", url)
+#     # First collect the site from the url
+#     try:
+#         page_content = asyncio.run(get_page(url))
+#     except:
+#         return "Error retrieving match content from URL"
+#     soup = BeautifulSoup(page_content, 'html.parser')
+#     return "Success."
 
-@app.route("/collectmatch/<path:url>")
+# @app.route("/collectmatch/<path:url>")
 def collect_match(url):
     print("Got request to collect", url)
     # Check URL against fbref pattern
