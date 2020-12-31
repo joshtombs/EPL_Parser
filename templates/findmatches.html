@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block head %}{% endblock%}
+
+{% block body %}
+<table>
+    <thead>
+        <tr>
+            <th>Total</th>
+            <th>New</th>
+            <th>Old</th>
+            <th>Skipped</th>
+            <th>Bucket</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>{{ stats['total'] }}</td>
+            <td>{{ stats['new'] }}</td>
+            <td>{{ stats['old'] }}</td>
+            <td>{{ stats['skipped'] }}</td>
+            <td>{{ stats['bucket'] }}</td>
+        </tr>
+    </tbody>
+</table>
+{% endblock%}
