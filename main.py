@@ -21,6 +21,8 @@ app = Flask(__name__)
 # Configure this environment variable via app.yaml
 CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 
+analysis_file_name = "latest_analysis.json"
+
 async def get_page(url):
     new_loop=asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
@@ -517,6 +519,64 @@ def see_storage(filename):
         bucket_blobs.append(blob)
 
     return render_template('storage.html', bucket_blobs=bucket_blobs)
+
+@app.route("/run-analysis")
+def run_analysis():
+    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
+    storage_client = storage.Client()
+    # blobs = storage_client.list_blobs(bucket_name)
+
+    # for blob in blobs:
+
+    analysis = {}
+    analysis['field1'] = 'Hello'
+    analysis['field2'] = 'World'
+
+    # Store analysis JSON in bucket
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+    except exceptions.NotFound:
+        raise NameError("Bucket does not exist")
+
+    # Delete old file if it exists
+    blob = bucket.get_blob(analysis_file_name)
+    if blob is not None:
+        blob.delete()
+
+    # Create the new analysis file
+    try:
+        blob = bucket.blob(analysis_file_name)
+        blob.upload_from_string(
+            data=json.dumps(analysis),
+            content_type='application/json'
+        )
+    except:
+        raise ValueError("Error writing JSON file to bucket")
+
+    return "Success running analysis"
+
+@app.route("/view-analysis")
+def view_analysis():
+    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
+    storage_client = storage.Client()
+    try:
+        bucket = storage_client.get_bucket(bucket_name)
+    except exceptions.NotFound:
+        raise NameError("Bucket does not exist")
+
+    # Check for file in bucket
+    try:
+        if not storage.Blob(bucket=bucket, name=analysis_file_name).exists(storage_client):
+            return "Latest anaylsis file does not exist"
+    except:
+        raise NameError("Error checking if file exists")
+
+    blob = bucket.get_blob(analysis_file_name)
+    json_string = blob.download_as_string()
+
+    analysis = json.loads(json_string)
+
+    return render_template('view_analysis.html', analysis=analysis)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
