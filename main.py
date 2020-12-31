@@ -41,7 +41,11 @@ async def get_page(url):
     print("Got response from page...")
     await resp_page.html.arender()
     print("Rendered page...")
-    return resp_page.content
+    content = resp_page.content
+
+    await browser.close()
+
+    return content
 
 def build_empty_json_obj():
     match = {}
