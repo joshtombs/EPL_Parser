@@ -1,4 +1,4 @@
-{% macro team_matches_table(num_games, team) -%}
+{% macro team_matches_table(team) -%}
   <table>
     <thead>
       <tr>
@@ -10,7 +10,7 @@
       </tr>
     </thead>
     <tbody>
-      {% for match in team['PastMatches'][0:num_games] %}
+      {% for match in team['PastMatches'] %}
         <tr>
           <td>{{ match['Date'] }}</td>
           <td>{{ match['Opponent'] }}</td>

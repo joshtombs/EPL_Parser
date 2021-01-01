@@ -1,5 +1,5 @@
-{% macro match_player_table(num_games, team) -%}
-  {% for match in team['PastMatches'][0:num_games] %}
+{% macro match_player_table(team) -%}
+  {% for match in team['PastMatches'] %}
     <h3>{{ match['Team'] }} against {{ match['Opponent'] }}</h3>
     <h4>Players</h4>
     <table>

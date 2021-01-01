@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% from 'daily_matchup.html' import matchup_view as daily_matchup_macro %}
 {% from 'team_last_x_matches_table.html' import team_matches_table as team_table_macro %}
 {% from 'match_player_stats.html' import match_player_table as player_table_macro %}
 
@@ -7,18 +8,21 @@
 {% endblock%}
 
 {% block body %}
+<h1>Matches Today:</h1>
 {% for match in todays_matches %}
-    <h1>Home: {{ match['HomeTeam']['Name'] }}</h1>
-    <h2> Team Last 10:</h2>
-    {{ team_table_macro(10, match['HomeTeam']) }}
-    <h2>Players Last 10:</h2>
-    {{ player_table_macro(10, match['HomeTeam']) }}
-
-    <h1>Away: {{ match['AwayTeam']['Name'] }}</h1>
-    <h2>Last 10:</h2>
-    {{ team_table_macro(10, match['AwayTeam']) }}
-    <h2>Players Last 10:</h2>
-    {{ player_table_macro(10, match['AwayTeam']) }}
+    {{ daily_matchup_macro(match) }}
+{% endfor %}
+<br><hr><br>
+{% for match in todays_matches %}
+    <h1>{{ match['AwayTeam']['Name'] }} at {{ match['HomeTeam']['Name'] }}</h1>
+    <h2> {{ match['HomeTeam']['Name'] }} Last 10:</h2>
+    {{ team_table_macro(match['HomeTeam']) }}
+    <h2> {{ match['AwayTeam']['Name'] }} Last 10:</h2>
+    {{ team_table_macro(match['AwayTeam']) }}
+    <h2>{{ match['HomeTeam']['Name'] }} Stats in Last 10:</h2>
+    {{ player_table_macro(match['HomeTeam']) }}
+    <h2>{{ match['AwayTeam']['Name'] }} Stats in Last 10:</h2>
+    {{ player_table_macro(match['AwayTeam']) }}
     
     <br><hr><br>
 {% endfor %}

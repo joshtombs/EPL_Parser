@@ -572,14 +572,14 @@ def run_analysis():
                 match_json_str = blob.download_as_string()
                 match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name'].replace(' ', '_')))
 
-    # Sort PastMatches by date in reverse order
+    # Sort PastMatches by date in reverse order, and keep only 10 most recent
     for match in matches:
         match['HomeTeam']['PastMatches'] = sorted(
             match['HomeTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
-                item['Date'], '%A %B %d, %Y'), reverse=True)
+                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
         match['AwayTeam']['PastMatches'] = sorted(
             match['AwayTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
-                item['Date'], '%A %B %d, %Y'), reverse=True)
+                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
 
     # TODO: Get odds?
 
