@@ -363,17 +363,6 @@ def extract_team_names_from_links(parent_el):
 def hello_world():
     return render_template('index.html')
 
-# @app.route("/test/<path:url>")
-# def test_pyppeteer(url):
-#     print("Got request to collect", url)
-#     # First collect the site from the url
-#     try:
-#         page_content = asyncio.run(get_page(url))
-#     except:
-#         return "Error retrieving match content from URL"
-#     soup = BeautifulSoup(page_content, 'html.parser')
-#     return "Success."
-
 # @app.route("/collectmatch/<path:url>")
 def collect_match(url):
     print("Got request to collect", url)
