@@ -424,8 +424,13 @@ def collect_match(url):
 
     return jsonify(match_json)
 
-@app.route("/findmatches")
-def find_new_matches():
+@app.route("/forcefindmatches", defaults={'force': True})
+@app.route("/findmatches", defaults={'force': False})
+# Force is a boolean that specifies whether to force saving data even if there are
+# more than 100 fixtures to collect. Not forcing, protects the app from automatically
+# storing too many files at once (which would likely be a bug, because there are not
+# hundreds of new matches per day)
+def find_new_matches(force):
     url = "http://fbref.com/en/comps/9/schedule/Premier-League-Scores-and-Fixtures"
 
     # First collect the site from the url
@@ -493,6 +498,9 @@ def find_new_matches():
                 num_skipped_matches += 1
                 break
 
+            if num_new_matches > 99 and not force:
+                print('Hit an upper limit for number of games per day - this is likely a bug')
+                break
             collect_match(match_url)
             time.sleep(15)  # Sleep 15 seconds as to not overload host server
             num_new_matches += 1
