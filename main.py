@@ -304,6 +304,41 @@ def match_is_valid(match_json):
 
     return True
 
+def extract_one_match_team(match_json, team):
+    new_match_json = {}
+    new_match_json['Date'] = match_json['Date']
+    if team == match_json['HomeStats']['Team']:
+        team_stats = match_json['HomeStats']
+        opp_stats = match_json['AwayStats']
+        new_match_json['Keepers'] = match_json['HomeKeepers']
+        new_match_json['Players'] = match_json['HomePlayers']
+        if match_json['Result'] == 'Home':
+            new_match_json['Result'] = 'Win'
+        elif match_json['Result'] == 'Away':
+            new_match_json['Result'] = 'Loss'
+        else:
+            new_match_json['Result'] = 'Draw'
+    else:
+        team_stats = match_json['AwayStats']
+        opp_stats = match_json['HomeStats']
+        new_match_json['Keepers'] = match_json['AwayKeepers']
+        new_match_json['Players'] = match_json['AwayPlayers']
+        if match_json['Result'] == 'Away':
+            new_match_json['Result'] = 'Win'
+        elif match_json['Result'] == 'Home':
+            new_match_json['Result'] = 'Loss'
+        else:
+            new_match_json['Result'] = 'Draw'
+
+    new_match_json['Team'] = team_stats['Team']
+    new_match_json['Opponent'] = opp_stats['Team']
+    new_match_json['OppRecord'] = opp_stats['Record']
+    new_match_json['GlsFor'] = team_stats['Goals']
+    new_match_json['GlsAgainst'] = opp_stats['Goals']
+    new_match_json['Possession'] = team_stats['Possession']
+
+    return new_match_json
+
 def store_match_json(match_json):
     if not match_is_valid(match_json):
         print('Skipped storing json file because match is not valid')
@@ -532,10 +567,10 @@ def run_analysis():
             away_pattern = re.compile(r'.*(%s).*'%match['AwayTeam']['Name'].replace(' ', '_'))
             if home_pattern.match(blob.name) is not None:
                 match_json_str = blob.download_as_string()
-                match['HomeTeam']['PastMatches'].append(json.loads(match_json_str))
+                match['HomeTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['HomeTeam']['Name'].replace(' ', '_')))
             if away_pattern.match(blob.name) is not None:
                 match_json_str = blob.download_as_string()
-                match['AwayTeam']['PastMatches'].append(json.loads(match_json_str))
+                match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name'].replace(' ', '_')))
 
     # Sort PastMatches by date in reverse order
     for match in matches:

@@ -1,45 +1,24 @@
 {% macro team_matches_table(num_games, team) -%}
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Opponent</th>
-                <th>Opponent Record</th>
-                <th>Result</th>
-                <th>Possession</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for match in team['PastMatches'][0:num_games] %}
-                <tr>
-                    <td>{{ match['Date'] }}</td>
-                    {% if team['Name'] == match['HomeStats']['Team'] %}
-                        <td>{{ match['AwayStats']['Team'] }}</td>
-                        <td>{{ match['AwayStats']['Record'] }}</td>
-                        {% if match['Result'] == 'Home' %}
-                            <td>Win
-                        {% elif match['Result'] == 'Away' %}
-                            <td>Loss
-                        {% else %}
-                            <td>Draw
-                        {% endif %}
-                        ({{ match['HomeStats']['Goals'] }}-{{ match['AwayStats']['Goals'] }}) </td>
-                        <td>{{ match['HomeStats']['Possession'] }}</td>
-                    {% else %}
-                        <td>{{ match['HomeStats']['Team'] }}</td>
-                        <td>{{ match['HomeStats']['Record'] }}</td>
-                        {% if match['Result'] == 'Away' %}
-                            <td>Win
-                        {% elif match['Result'] == 'Home' %}
-                            <td>Loss
-                        {% else %}
-                            <td>Draw
-                        {% endif %}
-                        ({{ match['AwayStats']['Goals'] }}-{{ match['HomeStats']['Goals'] }}) </td>
-                        <td>{{ match['AwayStats']['Possession'] }}</td>
-                    {% endif %}
-                </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+  <table>
+    <thead>
+      <tr>
+        <th>Date</th>
+        <th>Opponent</th>
+        <th>Opponent Record</th>
+        <th>Result</th>
+        <th>Possession</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for match in team['PastMatches'][0:num_games] %}
+        <tr>
+          <td>{{ match['Date'] }}</td>
+          <td>{{ match['Opponent'] }}</td>
+          <td>{{ match['OppRecord'] }}</td>
+          <td>{{ match['Result'] }} ({{ match['GlsFor'] }}-{{ match['GlsAgainst'] }}) </td>
+          <td>{{ match['Possession'] }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 {% endmacro -%}
