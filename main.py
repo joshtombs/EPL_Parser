@@ -23,6 +23,12 @@ CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
 
 analysis_file_name = "latest_analysis.json"
 
+# Helper function to avoid calling methods on empty objects
+def ASSIGN_OR_RAISE(expr):
+    if expr is None:
+        raise ValueError('Error parsing page')
+    return expr
+
 async def get_page(url):
     new_loop=asyncio.new_event_loop()
     asyncio.set_event_loop(new_loop)
@@ -70,19 +76,12 @@ def build_empty_json_obj():
     return match
 
 def parse_header(soup, match):
-    sbm = soup.find('div', {'class': 'scorebox_meta'})
-    if sbm is None:
-        raise ValueError('Error parsing page')
-
-    date_el = sbm.find('strong')
-    if date_el is None:
-        raise ValueError('Error parsing page')
+    sbm = ASSIGN_OR_RAISE(soup.find('div', {'class': 'scorebox_meta'}))
+    date_el = ASSIGN_OR_RAISE(sbm.find('strong'))
     match['Date'] = date_el.text
 
-    sb = soup.find('div', {'class': 'scorebox'})
-    if sb is None:
-        raise ValueError('Error parsing page')
-
+    sb = ASSIGN_OR_RAISE(soup.find('div', {'class': 'scorebox'}))
+    
     team_names = sb.findAll('a', {'itemprop': 'name'})
     if len(team_names) < 2:
         raise ValueError('Error parsing page')
@@ -346,30 +345,16 @@ def print_run_statistics(run_stats):
 def extract_team_names_from_links(parent_el):
     squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'
 
-    home_team_td = parent_el.find('td', {'data-stat': 'squad_a'})
-    if home_team_td is None:
-        raise ValueError('Error parsing page')
-
-    home_team_a = home_team_td.find('a', href=True)
-    if home_team_a is None:
-        raise ValueError('Error parsing page')
+    home_team_td = ASSIGN_OR_RAISE(parent_el.find('td', {'data-stat': 'squad_a'}))
+    home_team_a = ASSIGN_OR_RAISE(home_team_td.find('a', href=True))
     ht = re.search(squad_link_pattern, home_team_a['href'])
-    home_team = ht.group(2)
-    if home_team is None:
-        raise ValueError('Error parsing page')
+    home_team = ASSIGN_OR_RAISE(ht.group(2))
     home_name = home_team.replace('-', ' ').replace(' and ', ' & ')
 
-    away_team_td = parent_el.find('td', {'data-stat': 'squad_b'})
-    if away_team_td is None:
-        raise ValueError('Error parsing page')
-
-    away_team_a = away_team_td.find('a', href=True)
-    if away_team_a is None:
-        raise ValueError('Error parsing page')
+    away_team_td = ASSIGN_OR_RAISE(parent_el.find('td', {'data-stat': 'squad_b'}))
+    away_team_a = ASSIGN_OR_RAISE(away_team_td.find('a', href=True))
     at = re.search(squad_link_pattern, away_team_a['href'])
-    away_team = at.group(2)
-    if away_team is None:
-        raise ValueError('Error parsing page')
+    away_team = ASSIGN_OR_RAISE(at.group(2))
     away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
 
     return [home_name, away_name]
@@ -428,17 +413,9 @@ def find_new_matches():
     # Then parse the HTML on the site
     soup = BeautifulSoup(page_content, 'html.parser')
 
-    caption_el = soup.find('caption')
-    if caption_el is None:
-        raise ValueError('Error parsing page')
-
-    match_table = caption_el.parent
-    if match_table is None:
-        raise ValueError('Error parsing page')
-
-    match_tbody = match_table.find('tbody')
-    if match_table is None:
-        raise ValueError('Error parsing page')
+    caption_el = ASSIGN_OR_RAISE(soup.find('caption'))
+    match_table = ASSIGN_OR_RAISE(caption_el.parent)
+    match_tbody = ASSIGN_OR_RAISE(match_table.find('tbody'))
 
     # Setup cloud storage checking
     bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
@@ -458,9 +435,7 @@ def find_new_matches():
     match_rows = match_tbody.find_all('tr', {'class': None})
     for row in match_rows:
         num_total_matches += 1
-        date_td = row.find('td', {'data-stat': 'date'})
-        if date_td is None:
-            raise ValueError('Error parsing page')
+        date_td = ASSIGN_OR_RAISE(row.find('td', {'data-stat': 'date'}))
 
         try:
             match_date = datetime.datetime.strptime(date_td.text, '%Y-%m-%d').strftime('%A %B %d, %Y')
@@ -481,9 +456,7 @@ def find_new_matches():
             raise NameError("Error checking if file exists")
 
         # Get link for match report
-        match_report_td = row.find('td', {'data-stat': 'match_report'})
-        if match_report_td is None:
-            raise ValueError('Error parsing page')
+        match_report_td = ASSIGN_OR_RAISE(row.find('td', {'data-stat': 'match_report'}))
 
         link = match_report_td.find('a')
         if link is not None:
