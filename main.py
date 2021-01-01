@@ -28,13 +28,13 @@ async def get_page(url):
     asyncio.set_event_loop(new_loop)
     session = AsyncHTMLSession()
     print("Launching browser...")
-    browser = await pyppeteer.launch({ 
+    browser = await pyppeteer.launch({
         'executablePath': 'google-chrome-unstable',
         'ignoreHTTPSErrors':True,
         'dumpio':True,
-        'headless':True, 
-        'handleSIGINT':False, 
-        'handleSIGTERM':False, 
+        'headless':True,
+        'handleSIGINT':False,
+        'handleSIGTERM':False,
         'handleSIGHUP':False
     })
     print("Launched browser...")
@@ -137,7 +137,7 @@ def parse_players(soup, match):
         pass_rows = pass_table.find('tbody').findAll('tr')
         for (summary_row, misc_row, pass_row) in zip(summary_rows, misc_rows, pass_rows):
             player = {}
-            
+
             name_el = summary_row.find('th')
             if name_el is None:
                 continue
@@ -249,7 +249,7 @@ def parse_keepers(soup, match):
         rows = keeper_table.find('tbody').findAll('tr')
         for row in rows:
             player = {}
-            
+
             name_el = row.find('th')
             if name_el is None:
                 continue
@@ -262,11 +262,11 @@ def parse_keepers(soup, match):
             sota_el = row.find('td', {'data-stat': 'shots_on_target_against'})
             if sota_el is not None:
                 player['SoTA'] = int(sota_el.text.strip())
-            
+
             ga_el = row.find('td', {'data-stat': 'goals_against_gk'})
             if ga_el is not None:
                 player['GA'] = int(ga_el.text.strip())
-            
+
             psxg_el = row.find('td', {'data-stat': 'psxg_gk'})
             if psxg_el is not None:
                 player['PSxG'] = float(psxg_el.text.strip())
@@ -318,7 +318,7 @@ def store_match_json(match_json):
         bucket = storage_client.get_bucket(bucket_name)
     except exceptions.NotFound:
         raise NameError("Bucket does not exist")
-    
+
     try:
         if storage.Blob(bucket=bucket, name=file_name).exists(storage_client):
             raise NameError("File for match already exists")
@@ -522,15 +522,97 @@ def see_storage(filename):
 
 @app.route("/run-analysis")
 def run_analysis():
+    # Get matches for today
+    todays_date = datetime.datetime.today().strftime('%Y%m%d')
+    analysis = {}   # Object to store analysis
+    url = "http://fbref.com/en/comps/9/schedule/Premier-League-Scores-and-Fixtures"
+
+    # Get past match data
     bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     storage_client = storage.Client()
-    # blobs = storage_client.list_blobs(bucket_name)
+    blobs = storage_client.list_blobs(bucket_name)
 
-    # for blob in blobs:
+    # # First collect the site from the url
+    try:
+        page_content = asyncio.run(get_page(url))
+    except:
+        return "Error retrieving fixture content from URL"
 
-    analysis = {}
-    analysis['field1'] = 'Hello'
-    analysis['field2'] = 'World'
+    # Then parse the HTML on the site
+    soup = BeautifulSoup(page_content, 'html.parser')
+
+    match_els = soup.find_all('td', {'csk': todays_date})
+    matches = []
+    for match_el in match_els:
+        parent_el = match_el.parent
+        squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'
+
+        home_team_td = parent_el.find('td', {'data-stat': 'squad_a'})
+        if home_team_td is None:
+            raise ValueError('Error parsing page')
+
+        home_team_a = home_team_td.find('a', href=True)
+        if home_team_a is None:
+            raise ValueError('Error parsing page')
+        ht = re.search(squad_link_pattern, home_team_a['href'])
+        home_team = ht.group(2)
+        if home_team is None:
+            raise ValueError('Error parsing page')
+        home_name = home_team.replace('-', ' ').replace(' and ', ' & ')
+
+        away_team_td = parent_el.find('td', {'data-stat': 'squad_b'})
+        if away_team_td is None:
+            raise ValueError('Error parsing page')
+
+        away_team_a = away_team_td.find('a', href=True)
+        if away_team_a is None:
+            raise ValueError('Error parsing page')
+        at = re.search(squad_link_pattern, away_team_a['href'])
+        away_team = at.group(2)
+        if away_team is None:
+            raise ValueError('Error parsing page')
+        away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
+
+        match = {}
+        match['HomeTeam'] = {}
+        match['HomeTeam']['Name'] = home_name
+        match['HomeTeam']['PastMatches'] = []
+        match['AwayTeam'] = {}
+        match['AwayTeam']['Name'] = away_name
+        match['AwayTeam']['PastMatches'] = []
+        match['History'] = []
+
+        # TODO follow link to get match history b/t teams w/ a cutoff date
+
+        matches.append(match)
+
+    # Parse past matches for the teams
+    for blob in blobs:
+        for match in matches:
+            home_pattern = re.compile(r'.*(%s).*'%match['HomeTeam']['Name'].replace(' ', '_'))
+            away_pattern = re.compile(r'.*(%s).*'%match['AwayTeam']['Name'].replace(' ', '_'))
+            if home_pattern.match(blob.name) is not None:
+                match_json_str = blob.download_as_string()
+                match['HomeTeam']['PastMatches'].append(json.loads(match_json_str))
+            if away_pattern.match(blob.name) is not None:
+                match_json_str = blob.download_as_string()
+                match['AwayTeam']['PastMatches'].append(json.loads(match_json_str))
+
+    # Sort PastMatches by date in reverse order
+    for match in matches:
+        match['HomeTeam']['PastMatches'] = sorted(
+            match['HomeTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
+                item['Date'], '%A %B %d, %Y'), reverse=True)
+        match['AwayTeam']['PastMatches'] = sorted(
+            match['AwayTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
+                item['Date'], '%A %B %d, %Y'), reverse=True)
+
+    # TODO: Get odds?
+
+    # Add the matches to the analysis JSON object
+    analysis['Matches'] = []
+    for match in matches:
+        analysis['Matches'].append(match)
 
     # Store analysis JSON in bucket
     try:

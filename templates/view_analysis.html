@@ -1,9 +1,314 @@
 {% extends 'base.html' %}
 
-{% block head %}{% endblock%}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/view_analysis.css') }}">
+{% endblock%}
 
 {% block body %}
-<p>Win</p>
+{% for todays_match in analysis['Matches'] %}
+    <h1>Home: {{ todays_match['HomeTeam']['Name'] }}</h1>
+    <h2> Team Last 10:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Opponent</th>
+                <th>Opponent Record</th>
+                <th>Result</th>
+                <th>Possession</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in todays_match['HomeTeam']['PastMatches'][0:10] %}
+                <tr>
+                    <td>{{ match['Date'] }}</td>
+                    {% if todays_match['HomeTeam']['Name'] == match['HomeStats']['Team'] %}
+                        <td>{{ match['AwayStats']['Team'] }}</td>
+                        <td>{{ match['AwayStats']['Record'] }}</td>
+                        {% if match['Result'] == 'Home' %}
+                            <td>Win
+                        {% elif match['Result'] == 'Away' %}
+                            <td>Loss
+                        {% else %}
+                            <td>Draw
+                        {% endif %}
+                        ({{ match['HomeStats']['Goals'] }}-{{ match['AwayStats']['Goals'] }}) </td>
+                        <td>{{ match['HomeStats']['Possession'] }}</td>
+                    {% else %}
+                        <td>{{ match['HomeStats']['Team'] }}</td>
+                        <td>{{ match['HomeStats']['Record'] }}</td>
+                        {% if match['Result'] == 'Away' %}
+                            <td>Win
+                        {% elif match['Result'] == 'Home' %}
+                            <td>Loss
+                        {% else %}
+                            <td>Draw
+                        {% endif %}
+                        ({{ match['AwayStats']['Goals'] }}-{{ match['HomeStats']['Goals'] }}) </td>
+                        <td>{{ match['AwayStats']['Possession'] }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h2>Players Last 10:</h2>
+    {% for match in todays_match['HomeTeam']['PastMatches'][0:10] %}
+        <h3>{{ match['AwayStats']['Team'] }} at {{ match['HomeStats']['Team'] }}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Pos</th>
+                    <th>Min</th>
+                    <th>Gls</th>
+                    <th>Asts</th>
+                    <th>Ast Sht</th>
+                    <th>SoT</th>
+                    <th>Shts</th>
+                    <th>Crs</th>
+                    <th>Passes</th>
+                    <th>Fld</th>
+                    <th>Fls</th>
+                    <th>TklW</th>
+                    <th>Int</th>
+                    <th>Yel</th>
+                    <th>Red</th>
+                    <th>2Yel</th>
+                    <th>Cln</th>
+                    <th>DK Pts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if todays_match['HomeTeam']['Name'] == match['HomeStats']['Team'] %}
+                    {% for player in match['HomePlayers'] %}
+                        {% if player['Pos'] == 'GK' %}
+                        {% else %}
+                            <tr>
+                                <td>{{ player['Name'] }}</td>
+                                <td>{{ player['Pos'] }}</td>
+                                <td>{{ player['Min'] }}</td>
+                                <td>{{ player['Gls'] }}</td>
+                                <td>{{ player['Asts'] }}</td>
+                                <td>{{ player['AstShots'] }}</td>
+                                <td>{{ player['SoT'] }}</td>
+                                <td>{{ player['Sh'] }}</td>
+                                <td>{{ player['Crs'] }}</td>
+                                <td>{{ player['pComp'] }}</td>
+                                <td>{{ player['Fld'] }}</td>
+                                <td>{{ player['Fls'] }}</td>
+                                <td>{{ player['TklW'] }}</td>
+                                <td>{{ player['Int'] }}</td>
+                                <td>{{ player['CrdY'] }}</td>
+                                <td>{{ player['CrdR'] }}</td>
+                                <td>{{ player['2CrdY'] }}</td>
+                                {% if ('LB' in  player['Pos'] ) or ('CB' in  player['Pos'] ) or ('RB' in  player['Pos'] ) %}
+                                    {% if match['AwayStats']['Goals'] == 0 %}
+                                        <td>1</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR'] + 3) }}</td>
+                                    {% else %}
+                                        <td>0</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                    {% endif %}
+                                {% else %}
+                                    <td>-</td>
+                                    <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {% for player in match['AwayPlayers'] %}
+                        {% if player['Pos'] == 'GK' %}
+                        {% else %}
+                            <tr>
+                                <td>{{ player['Name'] }}</td>
+                                <td>{{ player['Pos'] }}</td>
+                                <td>{{ player['Min'] }}</td>
+                                <td>{{ player['Gls'] }}</td>
+                                <td>{{ player['Asts'] }}</td>
+                                <td>{{ player['AstShots'] }}</td>
+                                <td>{{ player['SoT'] }}</td>
+                                <td>{{ player['Sh'] }}</td>
+                                <td>{{ player['Crs'] }}</td>
+                                <td>{{ player['pComp'] }}</td>
+                                <td>{{ player['Fld'] }}</td>
+                                <td>{{ player['Fls'] }}</td>
+                                <td>{{ player['TklW'] }}</td>
+                                <td>{{ player['Int'] }}</td>
+                                <td>{{ player['CrdY'] }}</td>
+                                <td>{{ player['CrdR'] }}</td>
+                                <td>{{ player['2CrdY'] }}</td>
+                                {% if ('LB' in  player['Pos'] ) or ('CB' in  player['Pos'] ) or ('RB' in  player['Pos'] ) %}
+                                    {% if match['AwayStats']['Goals'] == 0 %}
+                                        <td>1</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR'] + 3) }}</td>
+                                    {% else %}
+                                        <td>0</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                    {% endif %}
+                                {% else %}
+                                    <td>-</td>
+                                    <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    {% endfor %}
 
-<p>{{ analysis }}</p>
+    <h1>Away: {{ todays_match['AwayTeam']['Name'] }}</h1>
+    <h2>Last 10:</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Opponent</th>
+                <th>Opponent Record</th>
+                <th>Result</th>
+                <th>Possession</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in todays_match['AwayTeam']['PastMatches'][0:10] %}
+                <tr>
+                    <td>{{ match['Date'] }}</td>
+                    {% if todays_match['AwayTeam']['Name'] == match['HomeStats']['Team'] %}
+                        <td>{{ match['AwayStats']['Team'] }}</td>
+                        <td>{{ match['AwayStats']['Record'] }}</td>
+                        {% if match['Result'] == 'Home' %}
+                            <td>Win
+                        {% elif match['Result'] == 'Away' %}
+                            <td>Loss
+                        {% else %}
+                            <td>Draw
+                        {% endif %}
+                        ({{ match['HomeStats']['Goals'] }}-{{ match['AwayStats']['Goals'] }}) </td>
+                        <td>{{ match['HomeStats']['Possession'] }}</td>
+                    {% else %}
+                        <td>{{ match['HomeStats']['Team'] }}</td>
+                        <td>{{ match['HomeStats']['Record'] }}</td>
+                        {% if match['Result'] == 'Away' %}
+                            <td>Win
+                        {% elif match['Result'] == 'Home' %}
+                            <td>Loss
+                        {% else %}
+                            <td>Draw
+                        {% endif %}
+                        ({{ match['AwayStats']['Goals'] }}-{{ match['HomeStats']['Goals'] }}) </td>
+                        <td>{{ match['AwayStats']['Possession'] }}</td>
+                    {% endif %}
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <h2>Players Last 10:</h2>
+    {% for match in todays_match['AwayTeam']['PastMatches'][0:10] %}
+        <h3>{{ match['AwayStats']['Team'] }} at {{ match['HomeStats']['Team'] }}</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Player</th>
+                    <th>Pos</th>
+                    <th>Min</th>
+                    <th>Gls</th>
+                    <th>Asts</th>
+                    <th>Ast Sht</th>
+                    <th>SoT</th>
+                    <th>Shts</th>
+                    <th>Crs</th>
+                    <th>Passes</th>
+                    <th>Fld</th>
+                    <th>Fls</th>
+                    <th>TklW</th>
+                    <th>Int</th>
+                    <th>Yel</th>
+                    <th>Red</th>
+                    <th>2Yel</th>
+                    <th>Cln</th>
+                    <th>DK Pts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% if todays_match['AwayTeam']['Name'] == match['HomeStats']['Team'] %}
+                    {% for player in match['HomePlayers'] %}
+                        {% if player['Pos'] == 'GK' %}
+                        {% else %}
+                            <tr>
+                                <td>{{ player['Name'] }}</td>
+                                <td>{{ player['Pos'] }}</td>
+                                <td>{{ player['Min'] }}</td>
+                                <td>{{ player['Gls'] }}</td>
+                                <td>{{ player['Asts'] }}</td>
+                                <td>{{ player['AstShots'] }}</td>
+                                <td>{{ player['SoT'] }}</td>
+                                <td>{{ player['Sh'] }}</td>
+                                <td>{{ player['Crs'] }}</td>
+                                <td>{{ player['pComp'] }}</td>
+                                <td>{{ player['Fld'] }}</td>
+                                <td>{{ player['Fls'] }}</td>
+                                <td>{{ player['TklW'] }}</td>
+                                <td>{{ player['Int'] }}</td>
+                                <td>{{ player['CrdY'] }}</td>
+                                <td>{{ player['CrdR'] }}</td>
+                                <td>{{ player['2CrdY'] }}</td>
+                                {% if ('LB' in  player['Pos'] ) or ('CB' in  player['Pos'] ) or ('RB' in  player['Pos'] ) %}
+                                    {% if match['AwayStats']['Goals'] == 0 %}
+                                        <td>1</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR'] + 3) }}</td>
+                                    {% else %}
+                                        <td>0</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                    {% endif %}
+                                {% else %}
+                                    <td>-</td>
+                                    <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endif %}
+                    {% endfor %}
+                {% else %}
+                    {% for player in match['AwayPlayers'] %}
+                        {% if player['Pos'] == 'GK' %}
+                        {% else %}
+                            <tr>
+                                <td>{{ player['Name'] }}</td>
+                                <td>{{ player['Pos'] }}</td>
+                                <td>{{ player['Min'] }}</td>
+                                <td>{{ player['Gls'] }}</td>
+                                <td>{{ player['Asts'] }}</td>
+                                <td>{{ player['AstShots'] }}</td>
+                                <td>{{ player['SoT'] }}</td>
+                                <td>{{ player['Sh'] }}</td>
+                                <td>{{ player['Crs'] }}</td>
+                                <td>{{ player['pComp'] }}</td>
+                                <td>{{ player['Fld'] }}</td>
+                                <td>{{ player['Fls'] }}</td>
+                                <td>{{ player['TklW'] }}</td>
+                                <td>{{ player['Int'] }}</td>
+                                <td>{{ player['CrdY'] }}</td>
+                                <td>{{ player['CrdR'] }}</td>
+                                <td>{{ player['2CrdY'] }}</td>
+                                {% if ('LB' in  player['Pos'] ) or ('CB' in  player['Pos'] ) or ('RB' in  player['Pos'] ) %}
+                                    {% if match['AwayStats']['Goals'] == 0 %}
+                                        <td>1</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR'] + 3) }}</td>
+                                    {% else %}
+                                        <td>0</td>
+                                        <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                    {% endif %}
+                                {% else %}
+                                    <td>-</td>
+                                    <td> {{ "%.2f"|format(10*player['Gls'] + 6*player['Asts'] + player['Sh'] + player['SoT'] + 0.7*player['Crs'] + player['AstShots'] + 0.02*player['pComp'] + player['Fld'] - 0.5*player['Fls'] + player['TklW'] + 0.5*player['Int']  - 1.5*player['CrdY'] - 3*player['CrdR']) }}</td>
+                                {% endif %}
+                            </tr>
+                        {% endif%}
+                    {% endfor %}
+                {% endif %}
+            </tbody>
+        </table>
+    {% endfor %}
+    <br><hr><br>
+{% endfor %}
 {% endblock%}
