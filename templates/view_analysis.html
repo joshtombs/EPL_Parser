@@ -7,18 +7,18 @@
 {% endblock%}
 
 {% block body %}
-{% for todays_match in analysis['Matches'] %}
-    <h1>Home: {{ todays_match['HomeTeam']['Name'] }}</h1>
+{% for match in todays_matches %}
+    <h1>Home: {{ match['HomeTeam']['Name'] }}</h1>
     <h2> Team Last 10:</h2>
-    {{ team_table_macro(10, todays_match['HomeTeam']) }}
+    {{ team_table_macro(10, match['HomeTeam']) }}
     <h2>Players Last 10:</h2>
-    {{ player_table_macro(10, todays_match['HomeTeam']) }}
+    {{ player_table_macro(10, match['HomeTeam']) }}
 
-    <h1>Away: {{ todays_match['AwayTeam']['Name'] }}</h1>
+    <h1>Away: {{ match['AwayTeam']['Name'] }}</h1>
     <h2>Last 10:</h2>
-    {{ team_table_macro(10, todays_match['AwayTeam']) }}
+    {{ team_table_macro(10, match['AwayTeam']) }}
     <h2>Players Last 10:</h2>
-    {{ player_table_macro(10, todays_match['AwayTeam']) }}
+    {{ player_table_macro(10, match['AwayTeam']) }}
     
     <br><hr><br>
 {% endfor %}

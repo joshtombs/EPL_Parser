@@ -524,7 +524,6 @@ def see_storage(filename):
 def run_analysis():
     # Get matches for today
     todays_date = datetime.datetime.today().strftime('%Y%m%d')
-    analysis = {}   # Object to store analysis
     url = "http://fbref.com/en/comps/9/schedule/Premier-League-Scores-and-Fixtures"
 
     # Get past match data
@@ -610,9 +609,9 @@ def run_analysis():
     # TODO: Get odds?
 
     # Add the matches to the analysis JSON object
-    analysis['Matches'] = []
+    todays_matches = []
     for match in matches:
-        analysis['Matches'].append(match)
+        todays_matches.append(match)
 
     # Store analysis JSON in bucket
     try:
@@ -629,7 +628,7 @@ def run_analysis():
     try:
         blob = bucket.blob(analysis_file_name)
         blob.upload_from_string(
-            data=json.dumps(analysis),
+            data=json.dumps(matches),
             content_type='application/json'
         )
     except:
@@ -656,9 +655,9 @@ def view_analysis():
     blob = bucket.get_blob(analysis_file_name)
     json_string = blob.download_as_string()
 
-    analysis = json.loads(json_string)
+    matches = json.loads(json_string)
 
-    return render_template('view_analysis.html', analysis=analysis)
+    return render_template('view_analysis.html', todays_matches=matches)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))
