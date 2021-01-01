@@ -343,6 +343,37 @@ def print_run_statistics(run_stats):
     print('   --------------------------')
     print('   Bucket should have: ', run_stats['bucket'], ' matches')
 
+def extract_team_names_from_links(parent_el):
+    squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'
+
+    home_team_td = parent_el.find('td', {'data-stat': 'squad_a'})
+    if home_team_td is None:
+        raise ValueError('Error parsing page')
+
+    home_team_a = home_team_td.find('a', href=True)
+    if home_team_a is None:
+        raise ValueError('Error parsing page')
+    ht = re.search(squad_link_pattern, home_team_a['href'])
+    home_team = ht.group(2)
+    if home_team is None:
+        raise ValueError('Error parsing page')
+    home_name = home_team.replace('-', ' ').replace(' and ', ' & ')
+
+    away_team_td = parent_el.find('td', {'data-stat': 'squad_b'})
+    if away_team_td is None:
+        raise ValueError('Error parsing page')
+
+    away_team_a = away_team_td.find('a', href=True)
+    if away_team_a is None:
+        raise ValueError('Error parsing page')
+    at = re.search(squad_link_pattern, away_team_a['href'])
+    away_team = at.group(2)
+    if away_team is None:
+        raise ValueError('Error parsing page')
+    away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
+
+    return [home_name, away_name]
+
 @app.route("/")
 def hello_world():
     return render_template('index.html')
@@ -436,35 +467,8 @@ def find_new_matches():
         except:
             raise ValueError('Error parsing page')
 
-        squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'
-
-        home_team_td = row.find('td', {'data-stat': 'squad_a'})
-        if home_team_td is None:
-            raise ValueError('Error parsing page')
-
-        home_team_a = home_team_td.find('a', href=True)
-        if home_team_a is None:
-            raise ValueError('Error parsing page')
-        ht = re.search(squad_link_pattern, home_team_a['href'])
-        home_team = ht.group(2)
-        if home_team is None:
-            raise ValueError('Error parsing page')
-        home_name = home_team.replace('-', ' ').replace(' and ', ' & ')
-
-        away_team_td = row.find('td', {'data-stat': 'squad_b'})
-        if away_team_td is None:
-            raise ValueError('Error parsing page')
-
-        away_team_a = away_team_td.find('a', href=True)
-        if away_team_a is None:
-            raise ValueError('Error parsing page')
-        at = re.search(squad_link_pattern, away_team_a['href'])
-        away_team = at.group(2)
-        if away_team is None:
-            raise ValueError('Error parsing page')
-        away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
-
-        match_file_name = get_match_filename(match_date, home_name, away_name)
+        team_names = extract_team_names_from_links(row)
+        match_file_name = get_match_filename(match_date, team_names[0], team_names[1])
 
         # Check for file in bucket
         try:
@@ -544,40 +548,14 @@ def run_analysis():
     matches = []
     for match_el in match_els:
         parent_el = match_el.parent
-        squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'
-
-        home_team_td = parent_el.find('td', {'data-stat': 'squad_a'})
-        if home_team_td is None:
-            raise ValueError('Error parsing page')
-
-        home_team_a = home_team_td.find('a', href=True)
-        if home_team_a is None:
-            raise ValueError('Error parsing page')
-        ht = re.search(squad_link_pattern, home_team_a['href'])
-        home_team = ht.group(2)
-        if home_team is None:
-            raise ValueError('Error parsing page')
-        home_name = home_team.replace('-', ' ').replace(' and ', ' & ')
-
-        away_team_td = parent_el.find('td', {'data-stat': 'squad_b'})
-        if away_team_td is None:
-            raise ValueError('Error parsing page')
-
-        away_team_a = away_team_td.find('a', href=True)
-        if away_team_a is None:
-            raise ValueError('Error parsing page')
-        at = re.search(squad_link_pattern, away_team_a['href'])
-        away_team = at.group(2)
-        if away_team is None:
-            raise ValueError('Error parsing page')
-        away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
+        team_names = extract_team_names_from_links(parent_el)
 
         match = {}
         match['HomeTeam'] = {}
-        match['HomeTeam']['Name'] = home_name
+        match['HomeTeam']['Name'] = team_names[0]
         match['HomeTeam']['PastMatches'] = []
         match['AwayTeam'] = {}
-        match['AwayTeam']['Name'] = away_name
+        match['AwayTeam']['Name'] = team_names[1]
         match['AwayTeam']['PastMatches'] = []
         match['History'] = []
 
