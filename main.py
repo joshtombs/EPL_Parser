@@ -19,9 +19,9 @@ import datetime
 app = Flask(__name__)
 
 # Configure this environment variable via app.yaml
-CLOUD_STORAGE_BUCKET = os.environ['CLOUD_STORAGE_BUCKET']
+bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
 
-analysis_file_name = "latest_analysis.json"
+analysis_file_names = ["todays_analysis.json", "tomorrows_analysis.json"]
 
 # Helper function to avoid calling methods on empty objects
 def ASSIGN_OR_RAISE(expr):
@@ -344,7 +344,6 @@ def store_match_json(match_json):
         print('Skipped storing json file because match is not valid')
         return
 
-    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     file_name = get_match_filename(match_json['Date'], match_json['HomeStats']['Team'], match_json['AwayStats']['Team'])
 
     storage_client = storage.Client()
@@ -393,6 +392,63 @@ def extract_team_names_from_links(parent_el):
     away_name = away_team.replace('-', ' ').replace(' and ', ' & ')
 
     return [home_name, away_name]
+
+def get_matches_for_date(date, storage_client):
+    # Get past match data
+    blobs = storage_client.list_blobs(bucket_name)
+    url = "http://fbref.com/en/comps/9/schedule/Premier-League-Scores-and-Fixtures"
+
+    # First collect the site from the url
+    try:
+        page_content = asyncio.run(get_page(url))
+    except:
+        return "Error retrieving fixture content from URL"
+
+    # Then parse the HTML on the site
+    soup = BeautifulSoup(page_content, 'html.parser')
+    match_els = soup.find_all('td', {'csk': date})
+    matches = []
+    for match_el in match_els:
+        parent_el = match_el.parent
+        team_names = extract_team_names_from_links(parent_el)
+
+        match = {}
+        match['HomeTeam'] = {}
+        match['HomeTeam']['Name'] = team_names[0]
+        match['HomeTeam']['PastMatches'] = []
+        match['AwayTeam'] = {}
+        match['AwayTeam']['Name'] = team_names[1]
+        match['AwayTeam']['PastMatches'] = []
+        match['History'] = []
+
+        # TODO follow link to get match history b/t teams w/ a cutoff date
+
+        matches.append(match)
+
+    # Parse past matches for the teams
+    for blob in blobs:
+        for match in matches:
+            home_pattern = re.compile(r'.*(%s).*'%match['HomeTeam']['Name'].replace(' ', '_'))
+            away_pattern = re.compile(r'.*(%s).*'%match['AwayTeam']['Name'].replace(' ', '_'))
+            if home_pattern.match(blob.name) is not None:
+                match_json_str = blob.download_as_string()
+                match['HomeTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['HomeTeam']['Name']))
+            if away_pattern.match(blob.name) is not None:
+                match_json_str = blob.download_as_string()
+                match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name']))
+
+    # Sort PastMatches by date in reverse order, and keep only 10 most recent
+    for match in matches:
+        match['HomeTeam']['PastMatches'] = sorted(
+            match['HomeTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
+                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
+        match['AwayTeam']['PastMatches'] = sorted(
+            match['AwayTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
+                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
+
+    # TODO: Get odds?
+
+    return matches
 
 @app.route("/")
 def hello_world():
@@ -447,7 +503,6 @@ def find_new_matches(force):
     match_tbody = ASSIGN_OR_RAISE(match_table.find('tbody'))
 
     # Setup cloud storage checking
-    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     storage_client = storage.Client()
     try:
         bucket = storage_client.get_bucket(bucket_name)
@@ -519,7 +574,6 @@ def find_new_matches(force):
 @app.route("/storage", defaults={'filename': 'file1.json'})
 @app.route("/storage/<string:filename>")
 def see_storage(filename):
-    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     storage_client = storage.Client()
     blobs = storage_client.list_blobs(bucket_name)
 
@@ -531,70 +585,12 @@ def see_storage(filename):
 
 @app.route("/run-analysis")
 def run_analysis():
-    # Get matches for today
+    # Get matches for today and tomorrow
     todays_date = datetime.datetime.today().strftime('%Y%m%d')
-    url = "http://fbref.com/en/comps/9/schedule/Premier-League-Scores-and-Fixtures"
-
-    # Get past match data
-    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
+    tomorrows_date = (datetime.datetime.today() + datetime.timedelta(days=1)).strftime('%Y%m%d')
     storage_client = storage.Client()
-    blobs = storage_client.list_blobs(bucket_name)
-
-    # First collect the site from the url
-    try:
-        page_content = asyncio.run(get_page(url))
-    except:
-        return "Error retrieving fixture content from URL"
-
-    # Then parse the HTML on the site
-    soup = BeautifulSoup(page_content, 'html.parser')
-
-    match_els = soup.find_all('td', {'csk': todays_date})
-    matches = []
-    for match_el in match_els:
-        parent_el = match_el.parent
-        team_names = extract_team_names_from_links(parent_el)
-
-        match = {}
-        match['HomeTeam'] = {}
-        match['HomeTeam']['Name'] = team_names[0]
-        match['HomeTeam']['PastMatches'] = []
-        match['AwayTeam'] = {}
-        match['AwayTeam']['Name'] = team_names[1]
-        match['AwayTeam']['PastMatches'] = []
-        match['History'] = []
-
-        # TODO follow link to get match history b/t teams w/ a cutoff date
-
-        matches.append(match)
-
-    # Parse past matches for the teams
-    for blob in blobs:
-        for match in matches:
-            home_pattern = re.compile(r'.*(%s).*'%match['HomeTeam']['Name'].replace(' ', '_'))
-            away_pattern = re.compile(r'.*(%s).*'%match['AwayTeam']['Name'].replace(' ', '_'))
-            if home_pattern.match(blob.name) is not None:
-                match_json_str = blob.download_as_string()
-                match['HomeTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['HomeTeam']['Name']))
-            if away_pattern.match(blob.name) is not None:
-                match_json_str = blob.download_as_string()
-                match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name']))
-
-    # Sort PastMatches by date in reverse order, and keep only 10 most recent
-    for match in matches:
-        match['HomeTeam']['PastMatches'] = sorted(
-            match['HomeTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
-                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
-        match['AwayTeam']['PastMatches'] = sorted(
-            match['AwayTeam']['PastMatches'], key = lambda item: datetime.datetime.strptime(
-                item['Date'], '%A %B %d, %Y'), reverse=True)[0:10]
-
-    # TODO: Get odds?
-
-    # Add the matches to the analysis JSON object
-    todays_matches = []
-    for match in matches:
-        todays_matches.append(match)
+    todays_matches = get_matches_for_date(todays_date, storage_client)
+    tomorrows_matches = get_matches_for_date(tomorrows_date, storage_client)
 
     # Store analysis JSON in bucket
     try:
@@ -602,16 +598,22 @@ def run_analysis():
     except exceptions.NotFound:
         raise NameError("Bucket does not exist")
 
-    # Delete old file if it exists
-    blob = bucket.get_blob(analysis_file_name)
-    if blob is not None:
-        blob.delete()
+    # Delete old analysis files (if they exists)
+    for analysis_file_name in analysis_file_names:
+        blob = bucket.get_blob(analysis_file_name)
+        if blob is not None:
+            blob.delete()
 
-    # Create the new analysis file
+    # Create the new analysis files
     try:
-        blob = bucket.blob(analysis_file_name)
+        blob = bucket.blob(analysis_file_names[0])
         blob.upload_from_string(
-            data=json.dumps(matches),
+            data=json.dumps(todays_matches),
+            content_type='application/json'
+        )
+        blob = bucket.blob(analysis_file_names[1])
+        blob.upload_from_string(
+            data=json.dumps(tomorrows_matches),
             content_type='application/json'
         )
     except:
@@ -621,7 +623,6 @@ def run_analysis():
 
 @app.route("/view-analysis")
 def view_analysis():
-    bucket_name = os.environ.get('CLOUD_STORAGE_BUCKET')
     storage_client = storage.Client()
     try:
         bucket = storage_client.get_bucket(bucket_name)
@@ -630,17 +631,24 @@ def view_analysis():
 
     # Check for file in bucket
     try:
-        if not storage.Blob(bucket=bucket, name=analysis_file_name).exists(storage_client):
-            return "Latest anaylsis file does not exist"
+        if not storage.Blob(bucket=bucket, name=analysis_file_names[0]).exists(storage_client):
+            return "Todays anaylsis file does not exist"
+        if not storage.Blob(bucket=bucket, name=analysis_file_names[1]).exists(storage_client):
+            return "Tomorrows anaylsis file does not exist"
     except:
         raise NameError("Error checking if file exists")
 
-    blob = bucket.get_blob(analysis_file_name)
+    # Get todays analysis object
+    blob = bucket.get_blob(analysis_file_names[0])
     json_string = blob.download_as_string()
+    todays_matches = json.loads(json_string)
 
-    matches = json.loads(json_string)
+    # Get todays analysis object
+    blob = bucket.get_blob(analysis_file_names[1])
+    json_string = blob.download_as_string()
+    tomorrows_matches = json.loads(json_string)
 
-    return render_template('view_analysis.html', todays_matches=matches)
+    return render_template('view_analysis.html', todays_matches=todays_matches, tomorrows_matches=tomorrows_matches)
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=int(os.environ.get("PORT", 8080)))

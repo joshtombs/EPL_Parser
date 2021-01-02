@@ -27,4 +27,25 @@
     <br><hr><br>
 {% endfor %}
 
+<br><hr class="day_divider"><br>
+
+<h1>Matches Tomorrow:</h1>
+{% for match in tomorrows_matches %}
+    {{ daily_matchup_macro(match) }}
+{% endfor %}
+<br><hr><br>
+{% for match in tomorrows_matches %}
+    <h1>{{ match['AwayTeam']['Name'] }} at {{ match['HomeTeam']['Name'] }}</h1>
+    <h2> {{ match['HomeTeam']['Name'] }} Last 10:</h2>
+    {{ team_table_macro(match['HomeTeam']) }}
+    <h2> {{ match['AwayTeam']['Name'] }} Last 10:</h2>
+    {{ team_table_macro(match['AwayTeam']) }}
+    <h2>{{ match['HomeTeam']['Name'] }} Stats in Last 10:</h2>
+    {{ player_table_macro(match['HomeTeam']) }}
+    <h2>{{ match['AwayTeam']['Name'] }} Stats in Last 10:</h2>
+    {{ player_table_macro(match['AwayTeam']) }}
+    
+    <br><hr><br>
+{% endfor %}
+
 {% endblock%}
