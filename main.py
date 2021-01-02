@@ -540,7 +540,7 @@ def run_analysis():
     storage_client = storage.Client()
     blobs = storage_client.list_blobs(bucket_name)
 
-    # # First collect the site from the url
+    # First collect the site from the url
     try:
         page_content = asyncio.run(get_page(url))
     except:
@@ -575,10 +575,10 @@ def run_analysis():
             away_pattern = re.compile(r'.*(%s).*'%match['AwayTeam']['Name'].replace(' ', '_'))
             if home_pattern.match(blob.name) is not None:
                 match_json_str = blob.download_as_string()
-                match['HomeTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['HomeTeam']['Name'].replace(' ', '_')))
+                match['HomeTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['HomeTeam']['Name']))
             if away_pattern.match(blob.name) is not None:
                 match_json_str = blob.download_as_string()
-                match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name'].replace(' ', '_')))
+                match['AwayTeam']['PastMatches'].append(extract_one_match_team(json.loads(match_json_str), match['AwayTeam']['Name']))
 
     # Sort PastMatches by date in reverse order, and keep only 10 most recent
     for match in matches:
