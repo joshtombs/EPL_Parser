@@ -8,7 +8,8 @@
 {% endblock%}
 
 {% block body %}
-<h1>Matches Today:</h1>
+<p><a href="#tomorrows_matches">Jump to Tomorrow</a></p>
+<h1 id="todays_matches">Matches Today:</h1>
 {% for match in todays_matches %}
     {{ daily_matchup_macro(match) }}
 {% endfor %}
@@ -29,7 +30,9 @@
 
 <br><hr class="day_divider"><br>
 
-<h1>Matches Tomorrow:</h1>
+<p><a href="#todays_matches">Jump to Today</a></p>
+
+<h1 id="tomorrows_matches">Matches Tomorrow:</h1>
 {% for match in tomorrows_matches %}
     {{ daily_matchup_macro(match) }}
 {% endfor %}
