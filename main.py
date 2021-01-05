@@ -284,11 +284,23 @@ def parse_page_to_json(soup):
     match = parse_keepers(soup, match)
     return match
 
+# Helper function to construct a JSON filename for a match. Inputs are strings
+# for date (format WEEKDAY MONTH DAY, YEAR ex. Tuesday January 05, 2021), and
+# home & away team names. If an invalid input is detected, None is returned
 def get_match_filename(date, hometeam, awayteam):
-    match_date = datetime.datetime.strptime(date, '%A %B %d, %Y').strftime('%d%b%Y')
-    home_name = hometeam.replace(' ', '_')
-    away_name = awayteam.replace(' ', '_')
-    return match_date + '_' + home_name + '_vs_' + away_name + '.json'
+    try:
+        match_date = datetime.datetime.strptime(date, '%A %B %d, %Y').strftime('%d%b%Y')
+    except:
+        print('Error parsing match_date')
+        return None
+
+    if type(hometeam) == str and type(awayteam) == str:
+        home_name = hometeam.replace(' ', '_')
+        away_name = awayteam.replace(' ', '_')
+        return match_date + '_' + home_name + '_vs_' + away_name + '.json'
+    else:
+        print('Team names must be strings')
+        return None
 
 def match_is_valid(match_json):
     if len(match_json['HomePlayers']) < 11:
