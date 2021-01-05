@@ -302,18 +302,32 @@ def get_match_filename(date, hometeam, awayteam):
         print('Team names must be strings')
         return None
 
+# Helper function to validate whether a match has proper information. Returns
+# True if the match looks valid, and False if something doesn't look right
 def match_is_valid(match_json):
-    if len(match_json['HomePlayers']) < 11:
+    try:
+        if len(match_json['HomePlayers']) < 11:
+            return False
+        if len(match_json['AwayPlayers']) < 11:
+            return False
+        if len(match_json['HomeKeepers']) < 1:
+            return False
+        if len(match_json['AwayKeepers']) < 1:
+            return False
+        if datetime.datetime.strptime(match_json['Date'], '%A %B %d, %Y') is None:
+            return False
+        if match_json['HomeStats']['Goals'] < 0:
+            return False
+        if match_json['AwayStats']['Goals'] < 0:
+            return False
+        if match_json['Result'] == 'Draw' and (match_json['HomeStats']['Goals'] != match_json['AwayStats']['Goals']):
+            return False
+        elif match_json['Result'] == 'Home' and (match_json['HomeStats']['Goals'] <= match_json['AwayStats']['Goals']):
+            return False
+        elif match_json['Result'] == 'Away' and (match_json['HomeStats']['Goals'] >= match_json['AwayStats']['Goals']):
+            return False
+    except:
         return False
-    if len(match_json['AwayPlayers']) < 11:
-        return False
-    if len(match_json['HomeKeepers']) < 1:
-        return False
-    if len(match_json['AwayKeepers']) < 1:
-        return False
-
-    # TODO: Validate header info
-
     return True
 
 def extract_one_match_team(match_json, team):
