@@ -395,14 +395,22 @@ def store_match_json(match_json):
     except:
         raise ValueError("Error writing JSON file to bucket")
 
+# Helper method to print statistics from the find_new_matches function
 def print_run_statistics(run_stats):
+    def object_or_empty_string(obj, key):
+        try:
+            val = obj[key]
+        except (KeyError, TypeError):
+            val = ''
+        return val
+
     print('Run statistics:')
-    print('   Total Matches: ', run_stats['total'])
-    print('   New Matches: ', run_stats['new'])
-    print('   Old Matches: ', run_stats['old'])
-    print('   Skipped Matches: ', run_stats['skipped'])
+    print('   Total Matches: ', object_or_empty_string(run_stats, 'total'))
+    print('   New Matches: ', object_or_empty_string(run_stats, 'new'))
+    print('   Old Matches: ', object_or_empty_string(run_stats, 'old'))
+    print('   Skipped Matches: ', object_or_empty_string(run_stats, 'skipped'))
     print('   --------------------------')
-    print('   Bucket should have: ', run_stats['bucket'], ' matches')
+    print('   Bucket should have: ', object_or_empty_string(run_stats, 'bucket'))
 
 def extract_team_names_from_links(parent_el):
     squad_link_pattern =  '^/en\/squads\/(.+)\/(.+)-Stats'

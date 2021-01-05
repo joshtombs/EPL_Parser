@@ -2,7 +2,8 @@
 import unittest
 
 import main
-from main import ASSIGN_OR_RAISE, get_match_filename, match_is_valid
+from main import (ASSIGN_OR_RAISE, get_match_filename, match_is_valid,
+                print_run_statistics)
 
 class TestAssignOrRaise(unittest.TestCase):
     def test_assign_or_raise_with_none(self):
@@ -165,5 +166,42 @@ class TestMatchIsValid(unittest.TestCase):
         """
         self.test_match['AwayStats'].pop('Goals', None)
         self.assertEqual(match_is_valid(self.test_match), False)
+
+class TestPrintRunStatistics(unittest.TestCase):
+    def setUp(self):
+        self.stats = {
+            'total': 100,
+            'new': 60,
+            'old': 40,
+            'skipped': 5,
+            'bucket': 95,
+        }
+    def test_print_run_statistics_with_valid(self):
+        """
+        Test that print_run_statistics succeeds with valid input
+        """
+        try:
+            print_run_statistics(self.stats)
+        except:
+            self.fail('print_run_statistics failed unexpectedly')
+    def test_print_run_statistics_with_none(self):
+        """
+        Test that print_run_statistics succeeds with None as an input
+        """
+        self.stats = None
+        try:
+            print_run_statistics(self.stats)
+        except:
+            self.fail('print_run_statistics failed unexpectedly')
+    def test_print_run_statistics_with_invalid(self):
+        """
+        Test that print_run_statistics succeeds with valid input
+        """
+        self.stats = None
+        try:
+            print_run_statistics(self.stats)
+        except:
+            self.fail('print_run_statistics failed unexpectedly')
+
 if __name__ == '__main__':
     unittest.main()
