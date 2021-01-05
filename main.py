@@ -379,6 +379,8 @@ def store_match_json(match_json):
         raise NameError("Bucket does not exist")
 
     try:
+        if file_name is None:
+            raise NameError("Error generating filename from match")
         if storage.Blob(bucket=bucket, name=file_name).exists(storage_client):
             raise NameError("File for match already exists")
     except:
@@ -554,6 +556,8 @@ def find_new_matches(force):
 
         team_names = extract_team_names_from_links(row)
         match_file_name = get_match_filename(match_date, team_names[0], team_names[1])
+        if match_file_name is None:
+            continue    # Error parsing filename from match info provided
 
         # Check for file in bucket
         try:
