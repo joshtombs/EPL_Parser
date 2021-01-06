@@ -3,7 +3,7 @@ import unittest
 
 import main
 from main import (ASSIGN_OR_RAISE, get_match_filename, match_is_valid,
-                print_run_statistics)
+                print_run_statistics, extract_one_match_team)
 
 class TestAssignOrRaise(unittest.TestCase):
     def test_assign_or_raise_with_none(self):
@@ -202,6 +202,76 @@ class TestPrintRunStatistics(unittest.TestCase):
             print_run_statistics(self.stats)
         except:
             self.fail('print_run_statistics failed unexpectedly')
+
+class TestExtractOneMatchTeam(unittest.TestCase):
+    def setUp(self):
+        self.match = {
+            'Date': 'Saturday January 02, 2021',
+            'Result': 'Away',
+            'HomeStats': {
+                'Team': 'TeamA',
+                'Record': '0-4-1',
+                'Goals': 2,
+                'Possession': '51%'
+            },
+            'AwayStats': {
+                'Team': 'TeamB & Spaces',
+                'Record': '17-4-0',
+                'Goals': 4,
+                'Possession': '49%'
+            },
+            'HomeKeepers': [
+                {
+                    'Name': 'KeeperA'
+                }
+            ],
+            'AwayKeepers': [
+                {
+                    'Name': 'KeeperB'
+                }
+            ],
+            'HomePlayers': [0,1,2,3,4,5,6,7,8,9,10,11,12,13],
+            'AwayPlayers': [0,1,2,3,4,5,6,7,8,9,10,11]
+        }
+
+    def test_extract_one_match_with_home(self):
+        new_json = extract_one_match_team(self.match, self.match['HomeStats']['Team'])
+        self.assertEqual(new_json['Team'], self.match['HomeStats']['Team'])
+        self.assertEqual(new_json['Date'], self.match['Date'])
+        self.assertEqual(new_json['Result'], 'Loss')
+        self.assertEqual(new_json['Opponent'], self.match['AwayStats']['Team'])
+        self.assertEqual(new_json['OppRecord'], self.match['AwayStats']['Record'])
+        self.assertEqual(new_json['GlsFor'], self.match['HomeStats']['Goals'])
+        self.assertEqual(new_json['GlsAgainst'], self.match['AwayStats']['Goals'])
+        self.assertEqual(new_json['Possession'], self.match['HomeStats']['Possession'])
+        self.assertEqual(new_json['Keepers'], self.match['HomeKeepers'])
+        self.assertEqual(new_json['Players'], self.match['HomePlayers'])
+
+    def test_extract_one_match_with_away(self):
+        new_json = extract_one_match_team(self.match, self.match['AwayStats']['Team'])
+        self.assertEqual(new_json['Team'], self.match['AwayStats']['Team'])
+        self.assertEqual(new_json['Date'], self.match['Date'])
+        self.assertEqual(new_json['Result'], 'Win')
+        self.assertEqual(new_json['Opponent'], self.match['HomeStats']['Team'])
+        self.assertEqual(new_json['OppRecord'], self.match['HomeStats']['Record'])
+        self.assertEqual(new_json['GlsFor'], self.match['AwayStats']['Goals'])
+        self.assertEqual(new_json['GlsAgainst'], self.match['HomeStats']['Goals'])
+        self.assertEqual(new_json['Possession'], self.match['AwayStats']['Possession'])
+        self.assertEqual(new_json['Keepers'], self.match['AwayKeepers'])
+        self.assertEqual(new_json['Players'], self.match['AwayPlayers'])
+
+    def test_extract_one_match_with_bad_team(self):
+        new_json = extract_one_match_team(self.match, 'TeamC')
+        self.assertIsNone(new_json)
+
+    def test_extract_one_match_with_none_match(self):
+        new_json = extract_one_match_team(None, self.match['AwayStats']['Team'])
+        self.assertIsNone(new_json)
+
+    def test_extract_one_match_with_missing_team(self):
+        self.match['HomeStats'].pop('Team', None)
+        new_json = extract_one_match_team(self.match, self.match['AwayStats']['Team'])
+        self.assertIsNone(new_json)
 
 if __name__ == '__main__':
     unittest.main()

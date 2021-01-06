@@ -330,38 +330,46 @@ def match_is_valid(match_json):
         return False
     return True
 
+# Helper function to convert a match JSON object (data collected from parsing
+# one match) into one stored for analysis (which only really cares about one
+# team in the match)
 def extract_one_match_team(match_json, team):
     new_match_json = {}
-    new_match_json['Date'] = match_json['Date']
-    if team == match_json['HomeStats']['Team']:
-        team_stats = match_json['HomeStats']
-        opp_stats = match_json['AwayStats']
-        new_match_json['Keepers'] = match_json['HomeKeepers']
-        new_match_json['Players'] = match_json['HomePlayers']
-        if match_json['Result'] == 'Home':
-            new_match_json['Result'] = 'Win'
-        elif match_json['Result'] == 'Away':
-            new_match_json['Result'] = 'Loss'
+    try:
+        new_match_json['Date'] = match_json['Date']
+        if team == match_json['HomeStats']['Team']:
+            team_stats = match_json['HomeStats']
+            opp_stats = match_json['AwayStats']
+            new_match_json['Keepers'] = match_json['HomeKeepers']
+            new_match_json['Players'] = match_json['HomePlayers']
+            if match_json['Result'] == 'Home':
+                new_match_json['Result'] = 'Win'
+            elif match_json['Result'] == 'Away':
+                new_match_json['Result'] = 'Loss'
+            else:
+                new_match_json['Result'] = 'Draw'
+        elif team == match_json['AwayStats']['Team']:
+            team_stats = match_json['AwayStats']
+            opp_stats = match_json['HomeStats']
+            new_match_json['Keepers'] = match_json['AwayKeepers']
+            new_match_json['Players'] = match_json['AwayPlayers']
+            if match_json['Result'] == 'Away':
+                new_match_json['Result'] = 'Win'
+            elif match_json['Result'] == 'Home':
+                new_match_json['Result'] = 'Loss'
+            else:
+                new_match_json['Result'] = 'Draw'
         else:
-            new_match_json['Result'] = 'Draw'
-    else:
-        team_stats = match_json['AwayStats']
-        opp_stats = match_json['HomeStats']
-        new_match_json['Keepers'] = match_json['AwayKeepers']
-        new_match_json['Players'] = match_json['AwayPlayers']
-        if match_json['Result'] == 'Away':
-            new_match_json['Result'] = 'Win'
-        elif match_json['Result'] == 'Home':
-            new_match_json['Result'] = 'Loss'
-        else:
-            new_match_json['Result'] = 'Draw'
+            return None
 
-    new_match_json['Team'] = team_stats['Team']
-    new_match_json['Opponent'] = opp_stats['Team']
-    new_match_json['OppRecord'] = opp_stats['Record']
-    new_match_json['GlsFor'] = team_stats['Goals']
-    new_match_json['GlsAgainst'] = opp_stats['Goals']
-    new_match_json['Possession'] = team_stats['Possession']
+        new_match_json['Team'] = team_stats['Team']
+        new_match_json['Opponent'] = opp_stats['Team']
+        new_match_json['OppRecord'] = opp_stats['Record']
+        new_match_json['GlsFor'] = team_stats['Goals']
+        new_match_json['GlsAgainst'] = opp_stats['Goals']
+        new_match_json['Possession'] = team_stats['Possession']
+    except:
+        return None
 
     return new_match_json
 
